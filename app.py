@@ -269,16 +269,19 @@ def get_maui_data():
             
     progress_bar.empty() # Remove a barra de progresso ao finalizar
     
-    df_tracks = pd.DataFrame(tracks_list).drop_duplicates('id_faixa')
+    # CRÍTICO: Não remover duplicatas por ID de faixa para manter histórico de lançamentos (Single -> Álbum)
+    # Isso garante que a contagem bata com o script R (ex: 77 faixas)
+    df_tracks = pd.DataFrame(tracks_list)
     
     # ---- 4. Popularidade das Faixas ----
     if len(df_tracks) > 0:
-        track_ids = df_tracks['id_faixa'].unique().tolist()
+        # Para buscar popularidade, precisamos de IDs únicos para não sobrecarregar a API
+        track_ids_unicos = df_tracks['id_faixa'].unique().tolist()
         
         # API do Spotify aceita até 50 IDs por vez
         popularidades = []
-        for i in range(0, len(track_ids), 50):
-            batch = track_ids[i:i+50]
+        for i in range(0, len(track_ids_unicos), 50):
+            batch = track_ids_unicos[i:i+50]
             try:
                 tracks_info = sp.tracks(batch)
                 for track in tracks_info['tracks']:
@@ -291,6 +294,8 @@ def get_maui_data():
                 continue
         
         df_popularidade = pd.DataFrame(popularidades)
+        
+        # Merge mantendo todas as linhas de df_tracks (mesmo as repetidas)
         df_tracks = df_tracks.merge(df_popularidade, on='id_faixa', how='left')
     
     return info_artista, df_albums, df_tracks
