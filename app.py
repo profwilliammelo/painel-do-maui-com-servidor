@@ -36,33 +36,27 @@ COR_AMARELO = "#FED100"
 COR_PRETO = "#000000"
 COR_FUNDO = "#002b36"
 COR_TEXTO = "#e0e0e0"
+COR_CARD_CINZA = "#4a5a63" # Cor aproximada do card cinza da imagem
 
 # ========================================================
-# CSS PERSONALIZADO (Tema Solar Dark)
+# CSS PERSONALIZADO (Tema Solar Dark + Cards)
 # ========================================================
 
 st.markdown(f"""
 <style>
+    /* Importar fontes se necessário (opcional) */
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
     /* Estilo Solar Dark Theme */
     .stApp {{
         background-color: {COR_FUNDO};
+        font-family: 'Roboto', sans-serif;
     }}
     
     /* Títulos */
     h1, h2, h3 {{
-        color: {COR_AMARELO} !important;
+        color: {COR_TEXTO} !important;
         font-weight: bold;
-    }}
-    
-    /* Métricas */
-    [data-testid="stMetricValue"] {{
-        color: {COR_VERDE};
-        font-size: 2rem;
-        font-weight: bold;
-    }}
-    
-    [data-testid="stMetricLabel"] {{
-        color: {COR_TEXTO};
     }}
     
     /* Sidebar */
@@ -100,10 +94,44 @@ st.markdown(f"""
         background: transparent !important;
     }}
     
-    /* Cards/Colunas */
-    div[data-testid="column"] {{
-        background-color: transparent;
+    /* Cards Customizados (KPIs) */
+    .kpi-card {{
+        border-radius: 10px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        height: 140px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     }}
+    
+    .kpi-title {{
+        font-size: 1rem;
+        font-weight: 500;
+        margin-bottom: 5px;
+        opacity: 0.9;
+    }}
+    
+    .kpi-value {{
+        font-size: 3rem;
+        font-weight: bold;
+        line-height: 1.2;
+    }}
+    
+    .kpi-icon {{
+        font-size: 3rem;
+        opacity: 0.5;
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+    }}
+    
+    /* Ajuste para ícones dentro das colunas */
+    div[data-testid="column"] {{
+        position: relative;
+    }}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -170,10 +198,11 @@ def get_maui_data():
     albums_list = []
     
     try:
-        # Busca inicial
+        # Busca inicial - ADICIONADO country='BR' para garantir disponibilidade
         results = sp.artist_albums(
             maui_id,
             include_groups=['album', 'single', 'appears_on', 'compilation'],
+            country='BR', 
             limit=50
         )
         albums_raw = results['items']
@@ -302,80 +331,96 @@ st.success("✅ Dados carregados com sucesso!")
 # TÍTULO PRINCIPAL
 # ========================================================
 
-st.markdown(f"# 🎤 {info_artista['nome']}")
-st.markdown("---")
+# st.markdown(f"# 🎤 {info_artista['nome']}")
+# st.markdown("---")
 
 # ========================================================
-# SEÇÃO 1: VISÃO GERAL (KPIs)
+# SEÇÃO 1: VISÃO GERAL (KPIs - Cards Customizados)
 # ========================================================
 
 st.markdown("## 📊 Visão Geral")
 
 col1, col2, col3 = st.columns(3)
 
+# Função auxiliar para criar card HTML
+def criar_card(titulo, valor, icone, cor_fundo, cor_texto):
+    return f"""
+    <div class="kpi-card" style="background-color: {cor_fundo}; color: {cor_texto};">
+        <div class="kpi-title">{titulo}</div>
+        <div class="kpi-value">{valor}</div>
+        <div class="kpi-icon">{icone}</div>
+    </div>
+    """
+
 with col1:
-    st.metric(
-        label="👥 Seguidores Totais",
-        value=f"{info_artista['seguidores']:,}".replace(',', '.')
-    )
+    st.markdown(criar_card(
+        "Seguidores Totais", 
+        f"{info_artista['seguidores']:,}".replace(',', '.'), 
+        "👥", 
+        COR_VERDE, 
+        "white"
+    ), unsafe_allow_html=True)
 
 with col2:
-    st.metric(
-        label="📈 Popularidade (0-100)",
-        value=info_artista['popularidade']
-    )
+    st.markdown(criar_card(
+        "Popularidade (0-100)", 
+        info_artista['popularidade'], 
+        "📈", 
+        COR_AMARELO, 
+        COR_FUNDO # Texto escuro para contraste no amarelo
+    ), unsafe_allow_html=True)
 
 with col3:
-    st.metric(
-        label="🎵 Total de Faixas c/ Maui",
-        value=len(df_tracks)
-    )
+    st.markdown(criar_card(
+        "Total de Faixas c/ Maui", 
+        len(df_tracks), 
+        "🎵", 
+        COR_CARD_CINZA, 
+        "white"
+    ), unsafe_allow_html=True)
 
-st.markdown("---")
+st.markdown("<br>", unsafe_allow_html=True)
 
 # ========================================================
 # SEÇÃO 2: VISUALIZAÇÕES
 # ========================================================
 
-st.markdown("## 📈 Análises e Visualizações")
+# st.markdown("## 📈 Análises e Visualizações")
 
-# ---- Top 10 Faixas por Popularidade ----
-st.markdown("### 🏆 Top 10 Faixas por Popularidade")
+# Layout: Coluna Esquerda (Top Faixas) | Coluna Direita (Álbuns + Linha do Tempo)
+# Mas o design original parece ser 3 colunas ou 2 linhas. Vamos manter o layout anterior mas com as cores certas.
 
-if not df_tracks.empty:
-    top_faixas = df_tracks.nlargest(10, 'popularidade_faixa')
+col_main_1, col_main_2, col_main_3 = st.columns(3)
 
-    fig_top_faixas = px.bar(
-        top_faixas,
-        x='popularidade_faixa',
-        y='nome_faixa',
-        orientation='h',
-        labels={'popularidade_faixa': 'Popularidade', 'nome_faixa': ''},
-        # title='As mais ouvidas no Spotify',
-        color='popularidade_faixa',
-        color_continuous_scale=[[0, COR_VERDE], [1, COR_AMARELO]]
-    )
+# ---- Gráfico 1: Top Faixas (Amarelo) ----
+with col_main_1:
+    # st.markdown("### 🏆 Top 10 Faixas")
+    if not df_tracks.empty:
+        top_faixas = df_tracks.nlargest(10, 'popularidade_faixa')
+        
+        fig_top = px.bar(
+            top_faixas,
+            x='popularidade_faixa',
+            y='nome_faixa',
+            orientation='h',
+            title='Top 10 Faixas por Popularidade',
+            color_discrete_sequence=[COR_AMARELO] # Amarelo
+        )
+        
+        fig_top.update_layout(
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color=COR_TEXTO),
+            yaxis={'categoryorder': 'total ascending', 'title': ''},
+            xaxis={'title': 'Popularidade'},
+            height=400,
+            margin=dict(l=0, r=0, t=40, b=0)
+        )
+        st.plotly_chart(fig_top, use_container_width=True)
 
-    fig_top_faixas.update_layout(
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color=COR_TEXTO),
-        yaxis={'categoryorder': 'total ascending'},
-        showlegend=False,
-        height=400,
-        margin=dict(l=0, r=0, t=30, b=0)
-    )
-
-    st.plotly_chart(fig_top_faixas, use_container_width=True)
-else:
-    st.info("Nenhuma faixa encontrada para exibir.")
-
-# ---- Row com 2 gráficos ----
-col_left, col_right = st.columns(2)
-
-with col_left:
-    st.markdown("### 📀 Faixas por Álbum/Projeto")
-    
+# ---- Gráfico 2: Faixas por Álbum (Verde) ----
+with col_main_2:
+    # st.markdown("### 📀 Faixas por Álbum")
     if not df_tracks.empty:
         faixas_por_album = df_tracks.groupby('nome_album').size().reset_index(name='count')
         faixas_por_album = faixas_por_album.nlargest(15, 'count')
@@ -385,25 +430,24 @@ with col_left:
             x='count',
             y='nome_album',
             orientation='h',
-            labels={'count': 'Número de faixas', 'nome_album': ''},
-            color_discrete_sequence=[COR_VERDE]
+            title='Faixas por Álbum/Projeto',
+            color_discrete_sequence=[COR_VERDE] # Verde
         )
         
         fig_albuns.update_layout(
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             font=dict(color=COR_TEXTO),
-            yaxis={'categoryorder': 'total ascending'},
-            showlegend=False,
+            yaxis={'categoryorder': 'total ascending', 'title': ''},
+            xaxis={'title': 'Número de faixas'},
             height=400,
-            margin=dict(l=0, r=0, t=30, b=0)
+            margin=dict(l=0, r=0, t=40, b=0)
         )
-        
         st.plotly_chart(fig_albuns, use_container_width=True)
 
-with col_right:
-    st.markdown("### 📅 Linha do Tempo de Lançamentos")
-    
+# ---- Gráfico 3: Linha do Tempo (Verde + Pontos Amarelos) ----
+with col_main_3:
+    # st.markdown("### 📅 Histórico")
     if not df_tracks.empty:
         lancamentos_por_ano = df_tracks.groupby('ano_lancamento').size().reset_index(name='count')
         lancamentos_por_ano = lancamentos_por_ano.sort_values('ano_lancamento')
@@ -420,10 +464,11 @@ with col_right:
                 color=COR_AMARELO,
                 line=dict(color=COR_PRETO, width=2)
             ),
-            name='Faixas lançadas'
+            name='Faixas'
         ))
         
         fig_linha.update_layout(
+            title='Histórico de Lançamentos',
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             font=dict(color=COR_TEXTO),
@@ -431,9 +476,8 @@ with col_right:
             yaxis_title='Faixas lançadas',
             showlegend=False,
             height=400,
-            margin=dict(l=0, r=0, t=30, b=0)
+            margin=dict(l=0, r=0, t=40, b=0)
         )
-        
         st.plotly_chart(fig_linha, use_container_width=True)
 
 st.markdown("---")
