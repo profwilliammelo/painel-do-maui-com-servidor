@@ -198,10 +198,10 @@ def get_maui_data():
     albums_list = []
     
     try:
-        # Busca inicial - ADICIONADO country='BR' para garantir disponibilidade
+        # Busca inicial - CORREÇÃO: album_type deve ser string, não lista
         results = sp.artist_albums(
             maui_id,
-            include_groups=['album', 'single', 'appears_on', 'compilation'],
+            album_type="album,single,appears_on,compilation",
             country='BR', 
             limit=50
         )
